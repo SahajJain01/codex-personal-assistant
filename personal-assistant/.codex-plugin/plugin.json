@@ -1,0 +1,18 @@
+{
+  "name": "personal-assistant",
+  "version": "0.1.0",
+  "description": "A local personal assistant that turns Markdown, screenshots, and Google Calendar into three achievable daily actions.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Personal Assistant",
+    "shortDescription": "Three achievable actions, informed by your life.",
+    "longDescription": "Plan your day from local to-do files, phone screenshots, and Google Calendar. Keep editable context through conversation and manage only assistant-owned calendar blocks. Requires Windows and a connected Google Calendar plugin.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": ["Set up my personal assistant.", "Plan the rest of my day.", "Update my task progress and context."]
+  }
+}

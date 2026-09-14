@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "todoPaths": ["C:\\Users\\YourName\\Documents\\Tasks.md"],
+  "screenshotFolders": ["C:\\Users\\YourName\\Pictures\\Phone screenshots"],
+  "calendarIds": ["primary"],
+  "writeCalendarId": "primary",
+  "timezone": "Asia/Bangkok",
+  "windowsTimezone": "SE Asia Standard Time",
+  "morningTime": "08:00",
+  "monitorStart": "09:00",
+  "monitorEnd": "20:00",
+  "planningDays": ["MO", "TU", "WE", "TH", "FR", "SA", "SU"],
+  "taskWindows": [{"start": "09:00", "end": "18:00"}],
+  "breaks": [{"start": "12:00", "end": "13:00"}],
+  "maxActions": 3,
+  "capacityFraction": 0.6,
+  "preferredActionMinutes": 30,
+  "screenshotSince": "2026-09-07T00:00:00+07:00",
+  "sourceCheckboxWrites": true,
+  "calendarWrites": true
+}

@@ -1,0 +1,8 @@
+.tools/
+.test-output/
+dist/
+*.tmp
+*.log
+__pycache__/
+# Personal workspace must be outside this repository.
+private/
