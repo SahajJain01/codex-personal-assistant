@@ -7,6 +7,7 @@ function Get-EventFingerprint {
         'transparency', 'attendees', 'recurrence', 'reminders', 'meet', 'eventType') {
         $normalized[$field] = $CalendarEvent.$field
     }
+    if ('details' -in $CalendarEvent.PSObject.Properties.Name) { $normalized.details = $CalendarEvent.details }
     return Get-TextHash ($normalized | ConvertTo-Json -Depth 30 -Compress)
 }
 

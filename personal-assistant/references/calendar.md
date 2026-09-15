@@ -1,15 +1,29 @@
-# Calendar connector protocol
+# Hermes Google Calendar protocol
 
-Use the installed Google Calendar connector, discovered on the target host.
-Do not implement direct OAuth, store tokens, or use browser automation as a silent
-fallback. Read actual tool schemas: tool names and supported fields can vary.
-The helper produces arguments matching the currently verified connector contract;
-if the host schema differs, stop calendar writes and report the mismatch.
+Load the installed google-workspace skill. Follow its authentication instructions
+for Calendar access using the current Hermes profile. Do not implement OAuth, copy
+Codex tokens, or save credentials in this workspace. Use the Python environment
+reported by `hermes --version`, with its Google API client dependencies. Locate
+`google-workspace/scripts/google_api.py` through skill_view. The bridge imports
+its `build_service` function; setup must verify this capability on the target version.
+
+Use absolute paths and shell argument arrays. Replace these placeholders:
+
+```text
+<Hermes Python> <skill>/scripts/calendar_bridge.py --google-script <Google skill>/scripts/google_api.py calendars
+<Hermes Python> <skill>/scripts/calendar_bridge.py --google-script <Google skill>/scripts/google_api.py events --calendar <ID> --start <RFC3339> --end <RFC3339> --timezone <IANA>
+<Hermes Python> <skill>/scripts/calendar_bridge.py --google-script <Google skill>/scripts/google_api.py get --calendar <ID> --event <ID>
+```
+
+`calendars` and `events` finish pagination or fail without returning partial data.
+Events remain full Google resources: retain cancellations, recurring-instance and
+all-day semantics when reasoning. `get` returns raw and normalized representations.
+Do not use the built-in skill's simplified list output for ownership or completeness.
 
 ## Read and normalize
 
 Search events with explicit RFC3339 bounds and IANA timezone on all configured
-calendars. Follow next_page_token until absent. Never use a keyword query to infer
+calendars. Follow nextPageToken until absent. Never use a keyword query to infer
 an empty schedule. Read complete event details for owned blocks and uncertain
 recurring/all-day entries. Busy/free lookup complements event reads; it cannot
 replace titles, recurrence details, or ownership evidence. Treat per-calendar
@@ -27,6 +41,10 @@ Normalize an owned event to the following consistent object after a full read:
   "meet":"", "eventType":"default"
 }
 ```
+
+Use the bridge get output as the canonical normalization. It also includes a
+details object tracking location, color, attachments, custom properties and guest
+permissions; preserve it unchanged. The JSON above shows the baseline fields.
 
 Use empty arrays/strings for absence and preserve actual reminder fields/order
 consistently. Attendees must reflect the actual complete event, not merely invited
@@ -68,12 +86,21 @@ desired is null. The helper checks freshness, scope, ownership, future time,
 task windows, breaks, duration, and overlap. It cannot authenticate evidence;
 the agent must supply only actual connector results, never fabricated availability.
 
-3. Read the returned state. Call a connector only if a new pending operation was
-   actually prepared. Use its connectorArguments exactly once with create_event,
-   update_event, or delete_event. These force private ordinary solo events without
-   invitations or Meet links. Never call a scheduling connector in preview mode.
-   Execute promptly (within two minutes of checking); refresh/reconcile if delayed.
-4. Read back the changed event, or verify deletion. Call CompleteCalendar:
+3. Read the returned state. Only dispatch a newly prepared pending operation:
+
+```text
+<Hermes Python> <skill>/scripts/calendar_bridge.py --google-script <Google skill>/scripts/google_api.py dispatch --workspace <absolute path> --run-token <token> --operation <prepared ID>
+```
+
+   The bridge translates the saved legacy-named connectorArguments to Google API
+   fields, refreshes overlap events, checks the full original owned event, claims
+   DispatchCalendar, then sends once. Update/delete use If-Match ETags. It reads
+   back and calls CompleteCalendar on success. It never retries mutations.
+   Do not bypass this bridge with generic Google create/update/delete commands.
+   A failure after dispatch leaves an uncertain operation for reconciliation.
+   Preview never prepares or dispatches writes.
+
+4. For recovery only, read back the changed event or verify deletion, then call CompleteCalendar:
 
 ```json
 {"operationId":"returned-id","outcome":"applied","event":null,"evidence":"Actual tool result/readback summary"}
@@ -86,7 +113,9 @@ requires definite rejection or authoritative reconciliation, not a network error
 
 ## Recover uncertain results
 
-Never blindly repeat create. Search the write calendar over the intended interval
+Never blindly repeat create. For bridge-created operations, first get the deterministic
+event ID `pa` followed by the operation ID (32 hex characters). Legacy Codex
+operations may have different IDs; reconcile those by marker before migration. Search the write calendar over the intended interval
 and, if needed, the rest of today for the exact saved marker
 `[personal-assistant:installationId:taskId:date]`; finish all pages and read matches.
 For updates/deletes, read the known event ID too. Exactly one matching event in the
@@ -103,7 +132,8 @@ appointments untouched even if they conflict with a critical task.
 
 If the calendar is stale/unavailable, save a provisional action plan with
 calendarFresh=false and postpone all writes. Partial sync is reported explicitly.
-The connector does not expose a cross-service transaction or conditional-write
-ETag in these tools: rereading minimizes, but cannot eliminate, a simultaneous
-edit between read and update. Re-read afterward and stop on conflict; never claim
-absolute race-free Google Calendar writes.
+Conditional ETags protect update/delete from concurrent edits to that event.
+Calendar availability across events/calendars is not transactional: another event
+can still be added after the overlap check. Report conflicts and replan rather than
+claiming atomic calendar reservations. A 412 response is not permission to overwrite;
+preserve the user's change and reconcile. Never classify auth failures as deletion.

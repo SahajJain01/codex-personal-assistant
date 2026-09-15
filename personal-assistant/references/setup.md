@@ -1,29 +1,30 @@
----
-name: assistant-setup
-description: Install, configure, diagnose, pause, or upgrade the Windows Personal Assistant that plans from local Markdown, synced screenshots, and Google Calendar.
----
 
 # Assistant setup
 
-Use this for setup and configuration of this plugin. The plugin root is two
-directories above this skill directory. Read [the runtime contract](../../references/runtime.md)
-before operating its helpers. Read [scheduling](../../references/scheduling.md)
+Use this for setup and configuration of this skill. Resolve the skill root from
+`${HERMES_SKILL_DIR}`. Read [the runtime contract](runtime.md)
+before operating its helpers. Read [scheduling](scheduling.md)
 when creating, changing, or pausing native schedules.
 
 ## Collect and verify
 
-1. Confirm Windows, Windows PowerShell 5.1 or newer, Codex image viewing, native
-   automation tools, and Google Calendar connector tools. Use tool discovery;
-   never assume the connector account on the packaging machine is the target account.
-2. If installing from the repository, use its `tools/Install.ps1`. The personal
-   marketplace is discovered implicitly. A new task may be needed to load skills;
-   give an exact continuation instruction if the current task cannot use them.
+1. Confirm Windows, Windows PowerShell 5.1 or newer, Hermes vision_analyze, native
+   cronjob tool, and google-workspace skill. Use skill_view and actual tool schemas.
+   Check `hermes --version` and use that installation's Python environment. Load
+   google-workspace and follow its setup authentication for Calendar only; do not
+   copy Codex credentials. Its OAuth setup may require a Google Desktop client
+   credential supplied by the user. Read calendar.md and verify build_service and
+   Google API client availability. Missing auth/dependencies block calendar writes.
+2. If installing from the repository, use `tools/Install.ps1 -HermesHome <profile>`.
+   Confirm the active profile path first (HERMES_HOME or the selected Hermes profile;
+   Windows default is LocalAppData/hermes). Verify with skills_list/skill_view;
+   a new Hermes session may be needed. Do not change unrelated profile settings.
 3. Collect all input Markdown file paths and screenshot folder paths. Screenshots
    must already sync locally; do not build a phone-sync service. Explain hourly
    processing versus real-time arrival. Only scan configured folders, nonrecursively.
-4. Collect a private workspace outside the plugin/repository and shared or public
+4. Collect a private workspace outside the skill/repository and shared or public
    folders. Default to the user's Documents\Personal Assistant. Files and model
-   processing use normal Codex services; this is not an offline model.
+   processing use the user's configured Hermes model/provider and vision service.
 5. List calendars through the connector, page to completion, and have the user
    select the calendars to consider and one writable calendar. Verify its access
    role is writer/owner. Existing appointments must remain unchanged.
@@ -35,6 +36,10 @@ when creating, changing, or pausing native schedules.
    09:00–20:00 monitoring, all days. Confirm defaults through the setup summary.
 7. Default screenshotSince to seven days before installation, in the selected
    timezone; ask if the user wants an older backlog. Do not copy the example date.
+8. Collect the user-facing cron delivery destination. Local delivery saves files
+   only; a connected user chat can receive plans/questions. Use origin only from
+   that verified chat. Verify Hermes scheduler timezone matches the chosen timezone
+   and check gateway health; follow scheduling.md before activating anything.
 
 Batch missing preferences in a short question. Existing session authorization
 persists: do not ask again for the same calendar/file authority. If the user wants
@@ -51,14 +56,13 @@ calendar writes or invent successful tests.
 
 Create an Init request using the config example in `assets/config.example.json`,
 replacing every example value. Store requests in the private workspace, never in
-the plugin. The context starts with the user's goals, constraints, confirmed facts,
+the skill. The context starts with the user's goals, constraints, confirmed facts,
 and an empty labeled assumptions section. Initialize with the helper. Re-running
 Init preserves existing state; use Configure under a run lease to change settings.
 
-The ongoing assistant task must run locally in the private workspace. If this is
-the repository task, direct the user to open that workspace and invoke
-`$assistant-setup` there; continue all independent setup work first. Do not attach
-live schedules to a temporary test task or an isolated Git worktree.
+Use the private workspace as cron workdir and include its absolute path in every
+prompt. Interactive replies may arrive in a different Hermes session: load the
+same workspace before updating it. Never rely on session history to identify tasks.
 
 Present the configuration summary and a preview with no calendar/source writes.
 Follow Assistant run in preview mode to use actual inputs. Preview may save
@@ -75,7 +79,7 @@ block/readback as pending integration validation; report this distinction.
 Then activate morning and hourly schedules using the scheduling reference. Save
 and read back both schedule IDs. Existing authorization covers activation after
 checks pass. Report setup complete only with actual configuration and schedule
-evidence; mention the app/computer must remain running.
+evidence; mention the Hermes gateway and computer must remain running.
 
 ## Diagnose, upgrade, pause
 
@@ -84,10 +88,10 @@ Markdown after interruption. A run lease is not automatically stolen: abandon it
 only after verifying the old task has stopped and cannot still call the connector.
 Reconcile unresolved calendar operations before another calendar write.
 
-For upgrades, reinstall the versioned release with tools/Install.ps1. During local
-development follow the available plugin-creator cachebuster/reinstall workflow.
-Never put private state in the plugin cache or replace the workspace. For pause,
-update both native schedules to paused and preserve all other fields. For uninstall,
-pause schedules first, remove the plugin using the native plugin manager, and retain
+For upgrades, pause both jobs and reinstall with tools/Install.ps1. Backups live
+outside skill discovery in the profile's assistant-releases directory. Verify the
+loaded release before resuming. Never replace the private workspace. For pause,
+use cronjob pause and preserve all other fields. For uninstall,
+pause/remove only the two recorded jobs, remove the installed skill, and retain
 the private workspace unless the user explicitly asks to delete it. Existing
 calendar blocks are retained unless the user requests cleanup.

@@ -1,20 +1,19 @@
-Set up the Personal Assistant from this repository on this Windows computer.
+Set up the Hermes Personal Assistant from this repository on this Windows computer.
+Read README.md, confirm the active Hermes profile, and run tools/Install.ps1 for that
+profile. Load personal-assistant/SKILL.md and follow references/setup.md. Use native
+Hermes skills, cronjob, vision_analyze and Google Workspace authentication.
 
-Read README.md, then run tools/Install.ps1 to install the personal Codex plugin.
-Read personal-assistant/skills/assistant-setup/SKILL.md and follow it. Collect my
-Markdown and screenshot paths, private workspace location, calendar selection,
-timezone, daily schedule, available task hours, goals, and preferences. Source
-paths are installation inputs; do not use example paths or this repository as my
-private workspace. Help me connect the Google Calendar plugin if required.
+Collect my Markdown and screenshot paths, private workspace, selected calendars,
+timezone, morning time, monitoring hours, task availability, goals and preferences.
+Also collect where I want plans delivered: my connected chat or local saved output.
+Never use example paths, this repository or the installed skill as private storage.
 
-Use the existing authorization to manage assistant-created private solo calendar
-blocks and update exact source checkboxes when I explicitly report completion.
-Preserve my other calendar events. Show the configuration summary and a preview,
-then activate the morning and hourly native schedules after capability checks
-pass. Do not ask for another general approval. Only ask for missing information
-or an authentication/permission step actually required by the host.
+If migrating an existing Codex assistant, follow docs/migration.md first. Preserve
+its workspace and history and pause its old schedules before activating Hermes.
 
-Keep future updates in one ongoing assistant task in the private workspace.
-If a new task is required to load the installed plugin, provide the exact local
-workspace path and the invocation to continue setup there. Do not claim the
-workflow is active until both schedule IDs are recorded and verified.
+Use the existing authorization to manage only assistant-created private solo calendar
+blocks and exact source checkboxes after explicit progress reports. Show a setup
+summary and preview, then activate the two native cron jobs once capability checks
+pass. Ask only for missing information or authentication steps actually required.
+Record returned job IDs and verify the Hermes gateway and next-run times. Do not
+claim activation while authentication, delivery or scheduler checks are unresolved.

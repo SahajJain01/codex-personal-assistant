@@ -1,12 +1,8 @@
----
-name: assistant-run
-description: Run or refresh the Windows Personal Assistant's daily action plan from configured Markdown, screenshots, persistent context, and Google Calendar; handle scheduled monitoring.
----
 
 # Assistant run
 
-Read [runtime](../../references/runtime.md) and [calendar](../../references/calendar.md).
-Use the configured private workspace, never the plugin directory. All private
+Read [runtime](runtime.md) and [calendar](calendar.md).
+Use the configured private workspace, never the skill directory. All private
 state is authoritative in immutable journal snapshots; the Markdown files are
 readable views. Explicitly read context.md and inferred-actions.md each run, compare
 them with Read if unexpectedly different, and resolve a manual edit before recovery
@@ -49,7 +45,7 @@ Failed/unreadable images remain retryable and are reported once per material err
 not marked processed. Ask for a supported export when image viewing cannot decode
 HEIC or another format; do not claim inspection.
 
-For each candidate, open only that image using Codex image viewing. The initial
+For each candidate, open only that image using Hermes vision_analyze. The initial
 observation, visible dates, and proposed action must be based solely on that image;
 do not use personal context, calendar events, web browsing, or other screenshots
 to fill missing facts. Record no_action when there is no plausible action. Record
@@ -114,8 +110,9 @@ Read back saved state and calendar results. End the lease. Morning output is the
 short plan and links to today.md. Hourly output occurs only for a meaningful plan
 change, urgent conflict, important question, or actionable failure. Screenshot
 processing alone does not justify a notification. For an unchanged run, suppress
-the notification using native behavior when supported; do not fabricate a control
-directive or send a routine success message.
+delivery by returning exactly `[SILENT]` after releasing the lease. This is Hermes's
+documented cron sentinel. Do not append status text to it. Scheduled jobs cannot
+wait for interactive replies: persist questions and include them in delivered output.
 
 On partial failures, preserve committed work, label source freshness and calendar
 sync status, and continue unrelated planning. Never publish calendar writes as

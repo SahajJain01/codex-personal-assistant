@@ -1,15 +1,15 @@
 # Runtime contract
 
-The helper is `scripts/Assistant.ps1` relative to the plugin root. Use absolute paths
+The helper is `scripts/Assistant.ps1` relative to the skill root. Use absolute paths
 when calling it. Use JSON request files to avoid shell interpolation of user data.
 All request files belong in the private workspace's `requests` directory (create
-it if needed). Do not put personal requests inside the plugin source/cache.
+it if needed). Do not put personal requests inside the skill source/cache.
 
 ```powershell
-& '<plugin-root>\scripts\Assistant.ps1' -Workspace '<private-workspace>' -Command Read
-& '<plugin-root>\scripts\Assistant.ps1' -Workspace '<private-workspace>' -Command Begin
-& '<plugin-root>\scripts\Assistant.ps1' -Workspace '<private-workspace>' -Command Commit -RunToken '<returned-token>' -RequestPath '<private-request.json>'
-& '<plugin-root>\scripts\Assistant.ps1' -Workspace '<private-workspace>' -Command End -RunToken '<returned-token>'
+& '<skill-root>\scripts\Assistant.ps1' -Workspace '<private-workspace>' -Command Read
+& '<skill-root>\scripts\Assistant.ps1' -Workspace '<private-workspace>' -Command Begin
+& '<skill-root>\scripts\Assistant.ps1' -Workspace '<private-workspace>' -Command Commit -RunToken '<returned-token>' -RequestPath '<private-request.json>'
+& '<skill-root>\scripts\Assistant.ps1' -Workspace '<private-workspace>' -Command End -RunToken '<returned-token>'
 ```
 
 These angle-bracket values describe inputs; replace them with actual returned/configured
@@ -43,11 +43,11 @@ Check unresolved calendar operations on restart before doing any external write.
   baseRevision from the latest Read and a human-readable reason. Do not send
   operations, blocks, schedules, activeRun, or installationId; these are maintained
   by dedicated commands. Preserve all prior tasks/screenshots and question history.
-- **Schedules:** `{"schedules":[{"kind":"morning","id":"actual-id","threadId":"actual-id","prompt":"saved prompt","status":"ACTIVE"},{"kind":"monitor","id":"actual-id","threadId":"actual-id","prompt":"saved prompt","status":"ACTIVE"}]}`.
+- **Schedules:** `{"schedules":[{"kind":"morning","id":"actual-id","host":"hermes","deliver":"local","prompt":"saved prompt","status":"ACTIVE"},{"kind":"monitor","id":"actual-id","host":"hermes","deliver":"local","prompt":"saved prompt","status":"ACTIVE"}]}`.
 - **CompleteSource:** `{"path":"absolute configured path","expectedHash":"file SHA256 lowercase","lineNumber":3,"expectedLine":"- [ ] Exact task","taskId":"t-id","userReport":"actual explicit completion report"}`.
 - **ReconcileSource:** `{"operationId":"pending-source-operation-id"}`. Reads current
   bytes and resolves applied/not_applied/user_changed without modifying the source.
-- **PrepareCalendar / CompleteCalendar / Override:** see calendar.md.
+- **PrepareCalendar / DispatchCalendar / CompleteCalendar / Override:** see calendar.md.
 - **Read / Begin / Renew / End / Discover:** no request required.
 
 ### Draft example
@@ -101,4 +101,8 @@ successful task or observation just because the tool response was interrupted.
 Images still syncing are skipped; unreadable paths return error records. Source
 and connector outages are surfaced as freshness limitations, never interpreted as
 zero tasks or an empty day. Private requests, snapshots and source backups may
-contain personal information; keep them out of the repository and plugin archive.
+contain personal information; keep them out of the repository and skill archive.
+
+DispatchCalendar takes {"operationId":"prepared-id"}, requires a live lease and
+a preparation younger than two minutes, and changes pending to uncertain before
+the bridge sends. It can only be claimed once. Old schema-1 journals are preserved.

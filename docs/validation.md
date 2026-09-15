@@ -1,59 +1,58 @@
-# Validation record â€” 2026-09-14
+# Validation record — Hermes conversion, 2026-09-15
 
-## Verified locally
+## Local verification
 
-- Windows PowerShell 5.1: all 20 deterministic scenarios passed.
-- PowerShell 7: all 20 deterministic scenarios passed.
+- Windows PowerShell 5.1 and PowerShell 7: 20 deterministic scenarios each.
 - PSScriptAnalyzer 1.24.0 formatting and warning/error analysis.
-- Built-in Codex plugin validator and all three skill validators.
-- Isolated personal-marketplace registration and repeat installation, preserving
-  unrelated entries. This test does not change the real user's Codex installation.
-- Release archive check includes the `.codex-plugin/plugin.json` manifest.
+- Python: nine calendar transport/Windows interop tests; Ruff 0.12.12 formatting and lint.
+- Installed Hermes v0.20.6: native skill discovery, all three reference modes, and
+  cron create/update/pause/remove in an isolated temporary profile. No gateway ran,
+  no job executed, and no real profile, account or delivery destination was changed.
+- Repeat installation preserves private memory and unrelated skills. Release
+  packaging contains the self-contained Hermes SKILL.md and support files.
 
-The suite covers initialization, private-state isolation, concurrent runs, stale
-drafts, plan/action/question constraints, screenshot duplication and changed bytes,
-unavailable sources, clarifications, explicit source progress, UTF-8 preservation,
-projection recovery, interrupted source preparation, committed-context recovery,
-stale calendars, overlaps, lost connector responses, owned create/update/delete,
-recreation after assistant removal, user overrides, outages, schedule records,
-and repeat installation. Calendar observations and schedule IDs are synthetic.
+PowerShell covers state isolation, run leases, stale drafts, bounded plans,
+screenshot deduplication, progress and clarification, source-write recovery,
+calendar ownership, overrides, replay rejection and repeated setup. Python tests
+cover complete pagination, cancelled/free/declined/all-day behavior, fresh conflicts,
+private deterministic creates, conditional updates/deletes, user edits, lost
+responses and failed ETags. Google responses and schedule records are synthetic.
 
-Run `powershell -NoProfile -File tests/Run-Tests.ps1`. It retains isolated evidence
-in a generated system-temporary directory and prints that absolute path. No test
-deletes user files, calls Google, or activates real schedules.
+Reproduce with the commands in README.md. To check a local Hermes install without
+using its account or starting a gateway:
 
-## Independent behavioral evaluation
+```text
+<Hermes Python> tests/hermes_compat.py --source <Hermes installation directory>
+```
 
-A separate evaluator read the skills, inspected three synthetic screenshots with
-native image viewing before reading the backlog, and produced an initial plan and
-an update. It did not read the evaluation rubric/expected answers. No external
-tools were called. Outcome: all rubric checks satisfied; no blocking skill ambiguity.
-See [the evaluated example](example-session.md).
+This compatibility check retains a temporary isolated profile with local-only jobs
+removed at the end. It tests host mechanics, not model reasoning or live delivery.
 
-This establishes a small realistic behavioral sample, not a statistical guarantee
-of future model decisions. The deterministic suite validates bookkeeping separately.
+## Behavioral fixture
 
-## Target-machine integration checklist
+The previous Codex version had an independent screenshot/planning evaluation; its
+example remains in [example-session.md](example-session.md). Planning invariants
+are retained in the Hermes run/update references. That historical evaluation is
+not presented as a live Hermes model evaluation. Use tests/New-EvaluationFixture.ps1
+and tests/fixtures/evaluation.md for a fresh target-model trial.
 
-These checks require actual installation inputs and are not claimed as completed
-by the local fixture suite:
+## Target-machine checklist — pending real inputs
 
-- [ ] Confirm actual Markdown paths and synced screenshot folders are readable.
-- [ ] Confirm actual screenshot formats render with the target Codex image tool.
-- [ ] Authenticate the intended Google account through its connector.
-- [ ] List selected calendars, verify writable role, and finish a 14-day event read.
-- [ ] Verify IANA/Windows timezone agreement, recurrence, all-day and busy/free behavior.
-- [ ] On a designated test calendar, create/read/move/read/delete/verify one private
-      solo block using the operation journal. Never use a production calendar as
-      an implicit test calendar.
-- [ ] Preview a real daily plan and verify its three-action/capacity limits.
-- [ ] Create/reconcile the two native schedules and verify next-run times and IDs.
-- [ ] Trigger one native scheduled run with real inputs and verify saved output.
-- [ ] Repeat an unchanged hourly check and verify notification suppression on the host.
-- [ ] Reply with progress/context, verify persistence, and inspect the revised plan.
-- [ ] Pause/resume both schedules and confirm state preservation.
+- [ ] Verify active Hermes profile and intended model/vision tools.
+- [ ] Confirm actual Markdown paths and screenshot folders; view one real image.
+- [ ] Authenticate the intended Google account using Hermes google-workspace.
+- [ ] Verify bridge dependencies and full paginated 14-day calendar reads.
+- [ ] Verify write role and chosen calendar, IANA/Windows/Hermes timezone agreement.
+- [ ] Test create/read/move/read/delete/absence on an explicitly designated test
+      calendar; do not treat production calendars as implicit test fixtures.
+- [ ] Preview a real plan and inspect action count, breakdown and capacity.
+- [ ] Confirm user delivery destination, or explain local output is save-only.
+- [ ] Reconcile two native jobs and inspect next-run times and gateway health.
+- [ ] Run one scheduled plan, then verify unchanged-monitor delivery suppression.
+- [ ] Answer a question/report progress and verify durable context on the next run.
+- [ ] Pause/resume and verify state preservation.
+- [ ] For migration, verify old Codex schedules are paused before Hermes activation.
 
-If no test calendar is designated, leave its trial pending for setup; do not
-mislabel a simulated connector lifecycle as live validation. Native automation
-notification behavior, account permissions, app availability, and connector schema
-compatibility are verified on the target machine rather than assumed by the package.
+Live OAuth, Google writes, model image interpretation and connected-chat delivery
+remain untested until the target inputs are provided. No local fixture is evidence
+that the user's workflow is already active.

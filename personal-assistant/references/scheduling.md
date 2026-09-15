@@ -1,63 +1,59 @@
-# Native schedules
+# Native Hermes schedules
 
-Use Codex's `automation_update` tool discovered on the target host. Use heartbeat
-schedules attached to the ongoing assistant task, executing locally in the private
-workspace. Keep the user-selected/default model. No Windows Task Scheduler, custom
-daemon, shell sleep loop, raw automation TOML writes, or assumed file-event trigger.
+Use the installed `cronjob` tool, inspect its current schema, and create two jobs
+with `skills: ["personal-assistant"]` and `workdir` set to the absolute private
+workspace. Jobs run in fresh sessions; neither conversation history nor optional
+continuity replaces reading durable context. Keep the configured Hermes model.
 
-Persist two schedule records, morning and monitor. Each saved prompt contains the
-installation ID, the absolute private workspace path, the explicitly invoked
-`$assistant-run` skill, its mode, and the notification behavior below. These markers
-are stable identifiers for reconciling setup after interrupted tool calls.
+Before creation, call cronjob list and match saved IDs, installation ID, workspace,
+and mode in prompts. Reuse/update a unique match. Do not recreate after a timeout;
+list again and reconcile. Keep unrelated jobs intact. Pause old Codex automations
+on their original host before migrating; saved old thread IDs are not Hermes job IDs.
 
-Before creating anything, read existing schedule IDs from state. Inspect the host's
-automation inventory (including `$CODEX_HOME/automations/*/automation.toml` when
-needed) and view matching IDs through the native tool. Search by installation ID,
-mode and workspace. Reuse matches and preserve unrelated schedules. Never create
-again merely because a creation response was lost. Ambiguous duplicates require
-resolution before activation; don't silently delete schedules.
+Morning: use a five-field cron expression for the configured planning days and time.
+Monitor: use hourly cron during configured hours/days. For partial-hour boundaries,
+the run reference must also gate using the workspace's local time. Verify Hermes's
+resolved timezone (HERMES_TIMEZONE, then config.yaml timezone, then host local time)
+matches configuration. This release does not assume per-job timezone support. If
+it differs, resolve that with the user before activation; changing the profile zone
+would affect unrelated jobs. Read back actual next-run times, including DST behavior.
 
-Create/update the morning heartbeat for the configured time and planning days in
-the user's timezone. Create/update the hourly heartbeat for configured active
-hours and days. If the host can't express the whole active window, use an hourly
-schedule plus the run skill's local-time/day gate; communicate that idle wakeups
-still consume some capacity. Check displayed next-run times against the chosen
-timezone; native scheduler timezone semantics must be verified on the host.
+Use native tool fields, never write cron/jobs.json. Set a descriptive name containing
+the installation ID and mode. Use `attach_to_session: true` for supported connected
+chat delivery. This makes delivered output continuable, not a shared execution
+session. Store the returned job ID, host=hermes, kind=morning/monitor, deliver,
+full prompt and status=ACTIVE/PAUSED using Schedules. Save each returned result
+privately immediately, even when the second job has not yet been created.
 
-Do not show raw recurrence rules to the user. Use the tool's supported schema and
-save the resulting IDs, full prompts, destination task IDs, and statuses. For
-updates preserve all other existing fields, including notification policy. For
-new tasks use normal notifications; do not select failed-runs-only because it
-would mute desired morning plans and meaningful monitoring results.
+Delivery is an explicit installation preference:
+- `local`: save output only; the user must inspect it in Hermes/local output.
+- `origin`: only when creating from the user's verified connected chat.
+- An explicit supported platform/chat ID: only the user's selected destination.
+Do not select `all` or a bot-to-bot destination. No new outbound channel is implied.
 
-Morning prompt content:
+Morning prompt, replacing brackets with actual values:
+> Load personal-assistant in morning mode for installation [ID] at [absolute path].
+> Read references/run.md and current durable context. Process new screenshots first,
+> read fresh calendars, then publish at most three achievable actions for remaining
+> time today. Manage only owned blocks. Persist at most two useful questions and
+> include them in the final plan; do not wait for a reply inside this cron run.
 
-> Invoke $assistant-run in morning mode for installation [actual installation ID]
-> at [actual absolute workspace]. Process new screenshots before planning. Fetch
-> fresh calendar data, use current context and progress, and publish up to three
-> achievable actions for today. Manage only this assistant's calendar blocks.
-> Ask at most two consequential questions, save them, and continue unrelated work.
-> If today's morning run was missed, plan for the remaining time. Read the skill
-> and workspace on every run; don't rely solely on this conversation's history.
+Monitor prompt:
+> Load personal-assistant in monitor mode for installation [ID] at [absolute path].
+> Follow references/run.md, including active-hours/day gates and missed-morning
+> catch-up. Refresh sources, screenshots, calendar and saved context. Preserve a
+> useful plan unless a material change requires revision. Notify only for meaningful
+> plan changes, urgent conflicts, important questions or actionable failures.
+> Persist questions without repeating them hourly. After releasing the lease, return
+> exactly [SILENT] when nothing actionable changed, including outside active hours.
 
-Monitor prompt content:
+Run `hermes cron status` and `hermes cron doctor` to diagnose scheduler health.
+The Hermes gateway must run and the computer must stay awake. Use the documented
+Hermes gateway setup for the target version; no custom daemon or Windows task is
+provided here. Do not claim activation merely because job records exist.
 
-> Invoke $assistant-run in monitor mode for installation [actual installation ID]
-> at [actual absolute workspace]. During the configured active hours, process new
-> screenshots and refresh Markdown, calendar, context, and progress. Keep the plan
-> stable unless a meaningful change requires an update. Stay quiet when inputs
-> are unchanged or non-actionable. Notify only for a meaningful plan change, urgent
-> conflict, important clarification, or actionable failure. Do not post routine
-> status reports or notify merely because screenshots were processed. Persist
-> questions and don't repeatedly ask unanswered questions each hour.
-
-After either creation/update returns uncertain, inspect current schedules before
-retrying. Once both IDs are verified, save them with the Schedules command. If only
-one operation succeeded, retain its returned ID in a private setup request/result
-file immediately and reconcile it by marker before proceeding. Don't report full
-activation while the second schedule is missing.
-
-Pause/resume via native updates with full preserved fields, then save status.
-Local schedules require the computer awake, app running, paths accessible, and
-working connector authentication. Missed runs are handled when the next actual
-invocation happens; the workflow cannot promise to wake a sleeping computer.
+Pause/resume/remove using cronjob actions on the verified recorded IDs. Read back
+changes and save status. Preview performs no calendar/source writes or scheduling.
+A missed morning is handled by the next active run for the remaining day; there
+is no promise to wake a sleeping computer. An unchanged successful monitor returns
+exactly `[SILENT]`; this suppresses delivery but preserves the native run log.

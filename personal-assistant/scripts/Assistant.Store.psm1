@@ -337,12 +337,30 @@ function Invoke-AssistantCommand {
             }
             'Schedules' {
                 if (@($Request.schedules).Count -ne 2) { throw 'Exactly morning and monitor schedule records required.' }
-                foreach ($schedule in $Request.schedules) { Assert-RequiredField $schedule @('kind', 'id', 'threadId', 'prompt', 'status') }
+                foreach ($schedule in $Request.schedules) {
+                    Assert-RequiredField $schedule @('kind', 'id', 'host', 'deliver', 'prompt', 'status')
+                    if ($schedule.host -ne 'hermes') { throw 'New schedules must use Hermes cron.' }
+                }
                 if (@($Request.schedules.kind | Sort-Object -Unique).Count -ne 2 -or
                     'morning' -notin $Request.schedules.kind -or 'monitor' -notin $Request.schedules.kind) { throw 'Invalid schedule kinds.' }
                 $state.schedules = $Request.schedules
             }
             'PrepareCalendar' { Add-CalendarOperation $state $Request }
+            'DispatchCalendar' {
+                $operationMatches = @($state.calendarOperations | Where-Object { $_.id -eq $Request.operationId })
+                if ($operationMatches.Count -ne 1 -or $operationMatches[0].status -ne 'pending') { throw 'Only a pending operation can dispatch once.' }
+                $age = [DateTimeOffset]::UtcNow - [DateTimeOffset]::Parse($operationMatches[0].preparedAt)
+                if ($age.TotalSeconds -gt 120 -or $age.TotalSeconds -lt -5) { throw 'Prepared operation expired; reconcile and refresh.' }
+                $operation = $operationMatches[0]
+                if ($operation.action -eq 'create') { $startTime = $operation.connectorArguments.start_time }
+                else { $startTime = $operation.before.start }
+                if ([DateTimeOffset]::Parse($startTime) -le [DateTimeOffset]::UtcNow) { throw 'Block has started; reconcile without dispatch.' }
+                if ($operation.action -eq 'update' -and [DateTimeOffset]::Parse($operation.connectorArguments.start_time) -le [DateTimeOffset]::UtcNow) {
+                    throw 'New block start has passed; reconcile without dispatch.'
+                }
+                $operation.status = 'uncertain'
+                $operation.result = 'Dispatch claimed before network mutation; reconcile before any retry.'
+            }
             'CompleteCalendar' { Complete-CalendarOperation $state $Request }
             'Override' {
                 $block = @($state.blocks | Where-Object { $_.taskId -eq $Request.taskId -and $_.date -eq $Request.date })

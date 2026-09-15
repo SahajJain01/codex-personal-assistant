@@ -1,9 +1,9 @@
 # Architecture and recovery
 
-The three skills own semantic behavior. PowerShell owns stable identity storage,
+One Hermes skill routes setup, run and update modes; the model owns semantic behavior. PowerShell owns stable identity storage,
 commit validation, screenshot deduplication, plan caps, run ownership, calendar
 operation bookkeeping, and exact source checkbox writes. No additional AI runtime
-is started. The Google Calendar connector stays in Codex, outside these scripts.
+is started. The Python bridge uses the installed Hermes Google Workspace skill for authentication.
 
 Data flow: local screenshots → image observation → inferred-actions.md → task
 reconciliation alongside Markdown and calendar → three-action plan → verified
@@ -27,8 +27,8 @@ Calendar operations move from pending to applied, not_applied, or uncertain.
 Unresolved operations block further preparation. Stable remote markers allow
 reconciliation when a connector succeeded but its response was lost. Full event
 fingerprints detect user overrides. Existing non-owned events are never eligible
-for mutation. Native Google connector tools do not offer conditional writes;
-concurrent user edits between a read and an update remain a platform limitation.
+for mutation. The bridge claims dispatch durably before sending once and uses If-Match ETags
+for update/delete. Cross-event availability checks are not transactional.
 
 Snapshots intentionally prioritize simple recovery over storage efficiency for a
 single personal assistant. They are not automatically pruned. Large installations
@@ -37,7 +37,7 @@ state and evidence needed for unresolved operations. No automated pruning is shi
 
 ## Operational recovery
 
-1. Check the ongoing Codex task and native schedules. Pause schedules during repair.
+1. Check the Hermes gateway, active runs and native schedules. Pause schedules during repair.
 2. Read latest state. If the old run is definitely stopped, abandon its lease with
    an explicit reason, then acquire a new lease.
 3. Reconcile pending/uncertain calendar calls through fresh connector reads. Never
@@ -47,14 +47,14 @@ state and evidence needed for unresolved operations. No automated pruning is shi
 5. Capture any manual changes to generated Markdown before rebuilding projections.
 6. Rebuild projections, run one manual plan, verify it, then resume schedules.
 
-See the plugin's references/runtime.md and references/calendar.md for executable
+See the skill's references/runtime.md and references/calendar.md for executable
 request contracts. No raw automation configuration is written by this repository.
-Schedule creation/reconciliation occurs through the native Codex tool, with stable
+Schedule creation/reconciliation occurs through the native Hermes cronjob tool, with stable
 installation/mode markers and saved returned IDs.
 
 ## Security and privacy boundaries
 
-Private configuration/state must live outside the repository and plugin cache.
+Private configuration/state must live outside the repository and installed skill.
 No credentials are stored. Restrict source access to configured paths and calendar
 writes to the selected calendar and verified owned events. Treat screenshot,
 Markdown, and calendar content as data, not behavioral instructions. User authority

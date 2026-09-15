@@ -240,6 +240,8 @@ $observed = @{ id = 'fixture-event'; calendarId = 'primary'; title = $arguments.
 Invoke-TestCase 'Prepared calendar calls are private solo blocks and block duplicate retries' {
     Assert-True (-not $arguments.add_google_meet -and $arguments.attendees.Count -eq 0 -and $arguments.visibility -eq 'private') 'Unsafe calendar arguments.'
     Assert-Rejection { Invoke-State PrepareCalendar $create } 'unresolved'
+    [void](Invoke-State DispatchCalendar @{ operationId = $operation.id })
+    Assert-Rejection { Invoke-State DispatchCalendar @{ operationId = $operation.id } } 'pending'
     [void](Invoke-State CompleteCalendar @{ operationId = $operation.id; outcome = 'uncertain'; event = $null; evidence = 'Simulated response timeout' })
     Assert-Rejection { Invoke-State PrepareCalendar $create } 'unresolved'
     [void](Invoke-State CompleteCalendar @{ operationId = $operation.id; outcome = 'applied'; event = $observed; evidence = 'Simulated fresh read found exact ownership marker once' })
@@ -292,8 +294,8 @@ Invoke-TestCase 'Calendar outage and foreign calendar cannot produce writes' {
 }
 Invoke-TestCase 'Schedule reconciliation preserves exactly two IDs across setup reruns' {
     $schedules = @(
-        @{ kind = 'morning'; id = 'fixture-morning'; threadId = 'fixture-thread'; prompt = 'Morning fixture'; status = 'ACTIVE' },
-        @{ kind = 'monitor'; id = 'fixture-monitor'; threadId = 'fixture-thread'; prompt = 'Monitor fixture'; status = 'ACTIVE' })
+        @{ kind = 'morning'; id = 'fixture-morning'; host = 'hermes'; deliver = 'local'; prompt = 'Morning fixture'; status = 'ACTIVE' },
+        @{ kind = 'monitor'; id = 'fixture-monitor'; host = 'hermes'; deliver = 'local'; prompt = 'Monitor fixture'; status = 'ACTIVE' })
     [void](Invoke-State Schedules @{ schedules = $schedules })
     [void](Invoke-State Schedules @{ schedules = $schedules })
     Assert-True ((Invoke-State Read).schedules.Count -eq 2) 'Schedule IDs duplicated.'
@@ -305,17 +307,19 @@ Invoke-TestCase 'Ended and abandoned runs reject their old tokens' {
     [void](Invoke-State Recover @{ abandonRun = $true; reason = 'Fixture has no active connector process' })
     Assert-Rejection { Invoke-AssistantCommand -Workspace $workspace -Command Renew -RunToken $next.activeRun.token } 'ownership'
 }
-Invoke-TestCase 'Isolated plugin installation is repeatable and preserves unrelated entries' {
-    $testProfile = Join-Path $testRoot 'profile'
-    $marketplaceDirectory = Join-Path $testProfile '.agents/plugins'
-    [void][IO.Directory]::CreateDirectory($marketplaceDirectory)
-    $marketplace = @{ name = 'personal'; interface = @{ displayName = 'My tools' }; plugins = @(@{ name = 'unrelated'; source = @{ source = 'local'; path = './plugins/unrelated' } }) }
-    $marketplacePath = Join-Path $marketplaceDirectory 'marketplace.json'
-    [IO.File]::WriteAllText($marketplacePath, ($marketplace | ConvertTo-Json -Depth 10))
-    & (Join-Path $repository 'tools/Install.ps1') -ProfileRoot $testProfile -RegisterOnly | Out-Null
-    & (Join-Path $repository 'tools/Install.ps1') -ProfileRoot $testProfile -RegisterOnly | Out-Null
-    $installed = Get-Content -LiteralPath $marketplacePath -Raw | ConvertFrom-Json
-    Assert-True ($installed.plugins.Count -eq 2 -and $installed.interface.displayName -eq 'My tools') 'Install damaged marketplace or duplicated plugin.'
-    Assert-True (Test-Path -LiteralPath (Join-Path $testProfile 'plugins/personal-assistant/skills/assistant-run/SKILL.md')) 'Packaged skill missing.'
+Invoke-TestCase 'Isolated Hermes installation preserves unrelated skills and private memory' {
+    $testProfile = Join-Path $testRoot 'hermes-profile'
+    $unrelated = Join-Path $testProfile 'skills/unrelated'
+    [void][IO.Directory]::CreateDirectory($unrelated)
+    [IO.File]::WriteAllText((Join-Path $unrelated 'SKILL.md'), 'Keep this skill')
+    [IO.File]::WriteAllText((Join-Path $testProfile 'memory.txt'), 'Keep private memory')
+    & (Join-Path $repository 'tools/Install.ps1') -HermesHome $testProfile | Out-Null
+    & (Join-Path $repository 'tools/Install.ps1') -HermesHome $testProfile | Out-Null
+    Assert-True ((Get-Content (Join-Path $unrelated 'SKILL.md') -Raw) -eq 'Keep this skill') 'Unrelated skill changed.'
+    Assert-True ((Get-Content (Join-Path $testProfile 'memory.txt') -Raw) -eq 'Keep private memory') 'Memory changed.'
+    $installed = Join-Path $testProfile 'skills/productivity/personal-assistant'
+    Assert-True (Test-Path -LiteralPath (Join-Path $installed 'SKILL.md')) 'Native skill missing.'
+    Assert-True (Test-Path -LiteralPath (Join-Path $installed 'scripts/calendar_bridge.py')) 'Bridge missing.'
+    Assert-True (@(Get-ChildItem (Join-Path $testProfile 'skills') -Filter SKILL.md -Recurse).Count -eq 2) 'Backup skill is discoverable.'
 }
 Write-Output "Passed $script:passed scenarios. Evidence retained at $testRoot"

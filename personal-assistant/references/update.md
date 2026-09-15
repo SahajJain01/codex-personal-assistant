@@ -1,11 +1,7 @@
----
-name: assistant-update
-description: Record progress, answer screenshot or task questions, correct context, or change today's capacity for an installed Personal Assistant, then adjust its plan.
----
 
 # Assistant update
 
-Read [runtime](../../references/runtime.md). Read [calendar](../../references/calendar.md)
+Read [runtime](runtime.md). Read [calendar](calendar.md)
 only when a calendar change is needed. Acquire a run lease and read the private
 workspace's current context, tasks, questions, and plan before interpreting a reply.
 If the conversation does not identify an installation, ask for its workspace.
